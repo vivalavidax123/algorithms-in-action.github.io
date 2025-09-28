@@ -9,6 +9,7 @@ export default class ListNode{
         this.patched = 0;
         this.selected = 0;
 
+
         // add new values: Visiable Controll
         // Node can be hidden now
         this.hidden = false;    // Hidden node
