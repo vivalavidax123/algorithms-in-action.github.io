@@ -318,6 +318,57 @@ class LinkedListTracer extends Tracer {
     n.sorted = false;
     super.set();
   }
+  
+  // New Function: to hide all the node()
+  hideAll() {
+    for (const node of this.nodes.values()) {
+      node.hidden = true;
+    }
+    super.set();
+  }
+
+  // New Function: only show the "Array index from the (1 based)" and 
+  // go through the chain with NextKey 
+  showOnlyFromIndex(index) {
+  // hide all node first
+    for (const node of this.nodes.values()) node.hidden = true;
+
+    const startKey = this.indexToKey.get(index);
+    if (!startKey) { super.set(); return; }
+
+    let cur = startKey;
+      while (cur && cur !== 'Null') {
+      const node = this.nodes.get(cur);
+      if (!node) break;
+        node.hidden = false;
+        cur = node.nextKey || null;
+      }
+    super.set();
+  }
+
+  // New Function: only show the arraies which has a starter, and others hide
+  showFromIndices(indices) {
+    for (const node of this.nodes.values()) node.hidden = true;
+
+    const starts = indices
+      .map(i => this.indexToKey.get(i))
+      .filter(Boolean);
+
+    for (const key of starts) {
+      let cur = key;
+      while (cur && cur !== 'Null') {
+        const node = this.nodes.get(cur);
+        if (!node) break;
+        node.hidden = false;
+        cur = node.nextKey || null;
+      }
+    }
+    super.set();
+  } 
+
 }
+
+
+
 
 export default LinkedListTracer;
