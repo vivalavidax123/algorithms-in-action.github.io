@@ -229,3 +229,41 @@
   font-size: 13px;
   color: var(--array-2d-row-col-value-color);
 }
+
+/* === 覆盖：选中态不再用描边，改为填充色 === */
+.selected .pill,
+.selected1 .pill,
+.selected2 .pill {
+  outline: none !important;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, .15); /* 保留统一阴影 */
+  border: 2px solid #3a3a3a; /* 维持既有边框 */
+}
+
+/* 左侧子链：#ffb000（与你截图一致） */
+.selected1 .pill {
+  background: linear-gradient(
+    90deg,
+    #ffb000 0 calc(100% - var(--cap-w)),
+    /* 右侧小盖稍微压一档，让视觉一致 */
+    #ff9900 calc(100% - var(--cap-w))
+  ) !important;
+}
+
+/* 右侧子链：#2f8cff */
+.selected2 .pill {
+  background: linear-gradient(
+    90deg,
+    #2f8cff 0 calc(100% - var(--cap-w)),
+    #1f6fd8 calc(100% - var(--cap-w))
+  ) !important;
+}
+
+/* 选中时右侧小圆点的颜色也压暗一点，避免偏灰 */
+.selected1 .dot { background: rgba(0,0,0,.25) !important; }
+.selected2 .dot { background: rgba(0,0,0,.25) !important; }
+
+/* 选中时数字的可读性（浅字），如已足够可忽略这条 */
+.selected1 .value,
+.selected2 .value {
+  color: #fff !important;
+}

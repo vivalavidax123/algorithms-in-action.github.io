@@ -18,11 +18,10 @@
 // etc (current work...)
 
 import { msort_lista_td } from '../explanations';
-import {colors} from '../../components/DataStructures/colors';
+import { colors } from '../../components/DataStructures/colors';
 
 // Animation should be consistent with array versions
-// XXX (could make code more similar and use shared code here)
-const apColor = colors.apple;
+const apColor   = colors.apple;
 const runAColor = colors.peach;
 const runBColor = colors.sky;
 const sortColor = colors.leaf;
@@ -31,66 +30,28 @@ const doneColor = colors.stone;
 const run = run_msort();
 
 export default {
-    explanation: msort_lista_td,
-    initVisualisers, 
-    run
+  explanation: msort_lista_td,
+  initVisualisers,
+  run
 };
 
-
-// XXX (was) Quicksort common code
-// Example of a recursive algorithm that could serve as a guide to
-// implementing others.  Some things to note:
-// 1) A depth parameter is added to the recursive code and also passed
-// to chunker.add()
-// 2) Recursive calls are in code blocks that can be collapsed, so the
-// whole recursive call can be done in a single step. To do this we must
-// have chunks at the recursion level of the call at the start and end
-// of the collapsed computation. Here the start chunk is a comment line.
-// It does nothing but notes that the call on the next line is recursive.
-// At the next step control goes back to the start of the function so
-// an extra comment is not a bad thing to do for clarity in any case.
-// The chunk after the recursive computation is at the line of code with
-// the call, so the call is highlighted when it returns, as we would
-// want.
-// 3) The stack is visualised in the animation, to help understanding of
-// the algorithm overall and also where we are in the recursion.
-// 4) There is chunk at the end of the whole computation that cleans up
-// the final display a bit.
-
-// There may be remnants of code from a previous version that didn't
-// encapsulate the recursive calls properly
-
 // import 2D tracer to generate array in the middle panel
-import Array2DTracer from '../../components/DataStructures/Array/Array2DTracer';
-
-// import LinkedList data Structure to represent animination
+import Array2DTracer    from '../../components/DataStructures/Array/Array2DTracer';
+// import LinkedList data Structure to represent animation
 import LinkedListTracer from '../../components/DataStructures/LinkedList/LinkedListTracer';
 
-import {
-  areExpanded,
-} from './collapseChunkPlugin';
+import { areExpanded } from './collapseChunkPlugin';
 
-/////////////////////////////////////////////////////
-
-// arrayB exists and is displayed only if MergeCopy is expanded
 function isMergeCopyExpanded() {
   return areExpanded(['MergeCopy']);
 }
-
-// We don't strictly need isMergeExpanded: only needed if last chunk of
-// merge still had extra vars displayed.  Some code still needs
-// isMergeCopyExpanded because it uses arrayB
 function isMergeExpanded() {
   return areExpanded(['MergeCopy', 'Merge']); // MergeCopy contains Merge
 }
-
-// checks if either recursive call is expanded (otherwise stack is not
-// displayed)
 function isRecursionExpanded() {
   return areExpanded(['MergesortL']) || areExpanded(['MergesortR']);
 }
 
-// see stackFrameColour in index.js to find corresponding function mapping to css
 const STACK_FRAME_COLOR = {
   No_color: 0,
   In_progress_stackFrame: 1,
@@ -98,166 +59,108 @@ const STACK_FRAME_COLOR = {
   Finished_stackFrame: 3,
   I_color: 4,
   J_color: 5,
-  P_color: 6, // pivot
+  P_color: 6,
 };
 
-let Indices;
-let Heads;
-let Tails;
-let simple_stack;
-
-
-// ----------------------------------------------------------------------------------------------------------------------------
-
-// Define helper functions
-// without javascript Closure arguements (IE 'global variables')
-// ----------------------------------------------------------------------------------------------------------------------------
-
-function assert(condition, message) {
-  if (!condition) {
-    throw new Error(message || 'Assertion failed');
-  }
-}
-
+let Indices, Heads, Tails, simple_stack;
 
 export function update_vis_with_stack_frame(a, stack_frame, stateVal) {
-  let left, right,  depth;
-  [left, right,  depth] = stack_frame;
-
-  for (let i = left; i <= right; i += 1) {
-    // each element in the vis stack is a tuple:
-    // 0th index is for base color,
-    // 1th index is for pivot, i, j colors
-    a[depth][i] = { base: stateVal, extra: [] };
-  }
-  let mid = Math.floor((left + right)/2);
-  // a[depth][mid] = { base: STACK_FRAME_COLOR.P_color, extra: [] };
+  let left, right, depth;
+  [left, right, depth] = stack_frame;
+  for (let i = left; i <= right; i += 1) a[depth][i] = { base: stateVal, extra: [] };
+  let mid = Math.floor((left + right) / 2);
   a[depth][mid] = { base: STACK_FRAME_COLOR.Current_stackFrame, extra: [] };
   return a;
 }
 
-const highlight = (vis, index, color) => {
-  vis.array.selectColor(index, color);
-};
+const highlight    = (vis, index, color) => { vis.array.selectColor(index, color); };
+const highlightB   = (vis, index, color) => { vis.arrayB.selectColor(index, color); };
+const unhighlight  = (vis, index)        => { vis.array.deselect(index); };
+const unhighlightB = (vis, index)        => { vis.arrayB.deselect(index); };
 
-const highlightB = (vis, index, color) => {
-  vis.arrayB.selectColor(index, color);
-};
-
-// XXX third arg unused
-const unhighlight = (vis, index, isPrimaryColor = true) => {
-  vis.array.deselect(index);
-};
-
-// XXX third arg unused
-const unhighlightB = (vis, index, isPrimaryColor = true) => {
-  vis.arrayB.deselect(index);
-};
-
-// ----------------------------------------------------------------------------------------------------------------------------
-
-
-// Just use a single 2D array to represent lists for now.  Could
-// possibly add a 1D array with arrayItemMagnitudes: true and rearrange
-// data at the end to show sortedness XXX
 export function initVisualisers() {
-    return {
-      array: {
-        instance: new Array2DTracer('array', null,
-         'Array representation of linked list'),
-        order: 0,
-      },
-      list: {
-        instance: new LinkedListTracer('list', null, 
-          'Pointer representation of linked list'),
-          order: 1,
-      },
-    }
+  return {
+    array: {
+      instance: new Array2DTracer('array', null, 'Array representation of linked list'),
+      order: 0,
+    },
+    list: {
+      instance: new LinkedListTracer('list', null, 'Pointer representation of linked list'),
+      order: 1,
+    },
+  };
 }
 
-/**
- *
- * @param {object} chunker
- * @param {array} nodes array of numbers needs to be sorted
- */
-
 export function run_msort() {
-
   return function run(chunker, { nodes }) {
-    // can't rename from nodes
-
-    // ----------------------------------------------------------------------------------------------------------------------------
-    // Define 'global' variables
-    // ----------------------------------------------------------------------------------------------------------------------------
 
     const entire_num_array = nodes;
     let A = nodes;
     let B = [...entire_num_array].fill(undefined);
 
-    // ----------------------------------------------------------------------------------------------------------------------------
-    // Define helper functions
-    // ----------------------------------------------------------------------------------------------------------------------------
-
-    function assignMaybeNullVar(vis, variable_name, index) {
-      if (index === 'Null') {
-        vis.array.assignVariable(variable_name, 2, undefined);
-        vis.array.assignVariable(variable_name+'=Null', 2, 0);
-      } else
-        vis.array.assignVariable(variable_name, 2, index);
+    // -------------------------------- LinkedList-only helpers（只作用于链表视图） --------------------------------
+    function ll_updateConnections(vis, tails) { // new add code
+      if (vis.list && typeof vis.list.updateConnections === 'function') {
+        vis.list.updateConnections(tails);
+      }
     }
-
-    function assignVarToA(vis, variable_name, index) {
-      if (index === undefined)
-        vis.array.removeVariable(variable_name);
-      else
-        vis.array.assignVariable(variable_name, index);
+    function ll_preselectRangeFromL(vis, lists, headIndex, len) { // new add code
+      if (!(vis.list && typeof vis.list.selectByIndex === 'function')) return;
+      const tails = lists[2];
+      let i = headIndex, cnt = 0;
+      while (i !== 'Null' && cnt < len) {
+        vis.list.selectByIndex(i, 1); // selected1 → SCSS 配置为 #ffb000 填充
+        i = tails[i];
+        cnt++;
+      }
     }
-
-    function assignVarToB(vis, variable_name, index) {
-      if (index === undefined)
-        vis.arrayB.removeVariable(variable_name);
-      else
-        vis.arrayB.assignVariable(variable_name, index);
+    function ll_colorWholeChainFrom(vis, lists, headIndex, channel) { // new add code
+      if (!(vis.list && typeof vis.list.selectByIndex === 'function')) return;
+      const tails = lists[2];
+      for (let i = headIndex; i !== 'Null'; i = tails[i]) {
+        vis.list.selectByIndex(i, channel); // 1:#ffb000  2:#2f8cff（SCSS 中 selected2 设为蓝色填充）
+      }
     }
-
-    // ------------------------------- LinkedList view helpers (for your new animation rules) -------------------------------
-    // new add code: 从当前 Tails 指针结构出发，生成从某个头索引 head 出发的一条链的 values 数组
+    function ll_hideChainFrom(vis, headIndex) { // new add code
+      if (!vis.list) return;
+      const key = vis.list.indexToKey && vis.list.indexToKey.get
+        ? vis.list.indexToKey.get(headIndex)
+        : null;
+      if (key && typeof vis.list.hideFromNode === 'function') vis.list.hideFromNode(key);
+    }
+    function ll_showAll(vis) { // new add code
+      if (vis.list && typeof vis.list.showAll === 'function') vis.list.showAll();
+    }
     function buildListValuesFromHead(headIndex, tailsArr, headsArr) { // new add code
       const out = [];
       for (let i = headIndex; i !== 'Null'; i = tailsArr[i]) out.push(headsArr[i]);
       return out;
     }
-
-    // new add code: 渲染“只显示左链”（从 L 出发），右链相当于“隐藏”（不渲染）
     function renderLeftOnly(vis, Lindex, tailsArr, headsArr, label) { // new add code
       const arr = (Lindex === 'Null') ? [] : buildListValuesFromHead(Lindex, tailsArr, headsArr);
-      vis.list.set(arr, label);
+      if (vis.list && typeof vis.list.set === 'function') vis.list.set(arr, label);
     }
-
-    // new add code: 渲染“两边都保留”的特殊情形（len==2）
-    // 说明：这里仅用于“展示两个单节点”；为了不提前“错误连边”，我们直接渲染两值组成的一条临时小链
-    // （真实指针关系仍然由 Array 视图 + 后续 updateConnections(Tails) 负责）
     function renderTwoSingletons(vis, Lindex, Rindex, headsArr, label) { // new add code
       const arr = [];
       if (Lindex !== 'Null') arr.push(headsArr[Lindex]);
       if (Rindex !== 'Null') arr.push(headsArr[Rindex]);
-      vis.list.set(arr, label);
+      if (vis.list && typeof vis.list.set === 'function') vis.list.set(arr, label);
     }
-    // ----------------------------------------------------------------------------------------------------------------------------
+    function ll_renderFromHead(vis, lists, headIndex, label = 'merged') { // new add code
+      // 按当前 Tails 从 headIndex 走到 Null，得到值序列，然后用 set() 触发布局刷新
+      if (!(vis.list && typeof vis.list.set === 'function')) return;
+      const values = buildListValuesFromHead(headIndex, lists[2], lists[1]);
+      vis.list.set(values, label);
+    }
+    // ---------------------------------------------------------------------------------------------------------------
 
-    // ----------------------------------------------------------------------------------------------------------------------------
-    // Define quicksort functions
-    // ----------------------------------------------------------------------------------------------------------------------------
-
-    // XXX unused currently (also modified in msort_arr_td.js)
-    function renderInMerge(vis, a, b, cur_left, cur_ap1, cur_ap2, cur_bp, cur_max1, cur_max2, c_stk) { 
+    function renderInMerge(vis, a, b, cur_left, cur_ap1, cur_ap2, cur_bp, cur_max1, cur_max2) { 
       if (isMergeExpanded()) {
         vis.array.set(a, 'msort_lista_td');
-        // set_simple_stack(vis.array, c_stk);
         assignVarToA(vis, 'ap1', cur_ap1);
         assignVarToA(vis, 'max1', cur_max1);
         highlight(vis, cur_ap1, true);
-        if (cur_ap2 < a.length) { // XXX 
+        if (cur_ap2 < a.length) {
           assignVarToA(vis, 'ap2', cur_ap2);
           highlight(vis, cur_ap2, true);
         } else {
@@ -266,233 +169,249 @@ export function run_msort() {
         assignVarToA(vis, 'max2', cur_max2);
         vis.arrayB.set(b, 'msort_lista_td');
         assignVarToB(vis, 'bp', cur_bp);
-        for (let i=cur_left; i < cur_bp; i++) {
-          highlightB(vis, i, false);
-        }
+        for (let i = cur_left; i < cur_bp; i++) highlightB(vis, i, false);
       }
     }
 
-    // calls vis.array.setList(c_stk) to display simple stack but only
-    // if recursion is expanded (otherwise stack is never displayed)
-    // XXX is this confusing if we run the algorithm a bit with
-    // recursion expanded then collapse recursion? I guess if you are
-    // doing that you have a pretty good understanding anyway?
+    function assignMaybeNullVar(vis, variable_name, index) {
+      if (index === 'Null') {
+        vis.array.assignVariable(variable_name, 2, undefined);
+        vis.array.assignVariable(variable_name + '=Null', 2, 0);
+      } else {
+        vis.array.assignVariable(variable_name, 2, index);
+      }
+    }
+    function assignVarToA(vis, variable_name, index) {
+      if (index === undefined) vis.array.removeVariable(variable_name);
+      else vis.array.assignVariable(variable_name, index);
+    }
+    function assignVarToB(vis, variable_name, index) {
+      if (index === undefined) vis.arrayB.removeVariable(variable_name);
+      else vis.arrayB.assignVariable(variable_name, index);
+    }
+
     const set_simple_stack = (vis_array, c_stk) => {
-    if (isRecursionExpanded())
-      vis_array.setList(c_stk);
+      if (isRecursionExpanded()) vis_array.setList(c_stk);
     }
 
     function MergeSort(L, len, depth) {
 
-
-      //// start mergesort -------------------------------------------------------- 
-// XXXXX
-
-      // XXX defined function to display first couple of list elements
-      simple_stack.unshift('(['+Heads[L]+'..],'+len+')');
-
-      // should show animation if doing high level steps for whole array OR if code is expanded to do all reccursive steps
+      simple_stack.unshift('([' + Heads[L] + '..],' + len + ')');
 
       chunker.add('Main', (vis, Lists, cur_L, cur_len, cur_depth, c_stk) => {
         vis.array.set(Lists, 'msort_lista_td');
 
-        // 初始化 链表（初始：展示整条链）
-        vis.list.set(entire_num_array, 'mergeSort list init');
+        // 初次：链表视图展示整条链（不影响 table）
+        if (vis.list && typeof vis.list.set === 'function') { // new add code
+          vis.list.set(entire_num_array, 'mergeSort list init'); // new add code
+        }
 
         vis.array.assignVariable('L', 2, cur_L);
-        // colour all of list
-        let Tails = Lists[2];
-        for (let i = cur_L; i !== 'Null'; i = Tails[i]) {
+        let T = Lists[2];
+        for (let i = cur_L; i !== 'Null'; i = T[i]) {
           vis.array.select(1, i, 1, i, runAColor);
           vis.array.select(2, i, 2, i, runAColor);
         }
         set_simple_stack(vis.array, c_stk);
-        }, [[Indices, Heads, Tails], L, len, depth, simple_stack], depth);
+      }, [[Indices, Heads, Tails], L, len, depth, simple_stack], depth);
 
-      chunker.add('len>1', (vis, a) => {
-        }, [[Indices, Heads, Tails]], depth);
+      chunker.add('len>1', () => {}, [[Indices, Heads, Tails]], depth);
 
       if (len > 1) {
-        let midNum = Math.floor(len/2);
+        let midNum = Math.floor(len / 2);
 
         let Mid = L;
-        chunker.add('Mid', (vis, Lists, cur_L, cur_Mid, c_stk) => {
+        // —— 分割前：预选整段（amber #ffb000），并入已有 “Mid” 书签 —— 
+        chunker.add('Mid', (vis, Lists, cur_L, cur_Mid, c_stk, cur_len) => { // new add code
+          ll_updateConnections(vis, Lists[2]);                // new add code
+          ll_preselectRangeFromL(vis, Lists, cur_L, cur_len); // new add code
           vis.array.assignVariable('Mid', 2, cur_Mid);
-          }, [[Indices, Heads, Tails], L, Mid, simple_stack], depth);
+        }, [[Indices, Heads, Tails], L, Mid, simple_stack, len], depth); // new add code: 传 len
 
         for (let i = 1; i < midNum; i++) {
           Mid = Tails[Mid];
         }
+
         // split L into lists L and R at (after) mid point
         let R = Tails[Mid];
         Tails[Mid] = 'Null';
-        chunker.add('tail(Mid)<-Null', (vis, Lists, cur_L, cur_Mid,
-cur_R, c_stk, cur_len) => { // new add code: 传入 cur_len 以便判断 len==2
+
+        // —— 分割后：左 amber(#ffb000) 右 blue(#2f8cff)，len!=2 时隐藏右边 —— 
+        chunker.add('tail(Mid)<-Null', (vis, Lists, cur_L, cur_Mid, cur_R, c_stk, cur_len) => { // new add code
           vis.array.set(Lists, 'msort_lista_td');
           set_simple_stack(vis.array, c_stk);
           vis.array.assignVariable('L', 2, cur_L);
           vis.array.assignVariable('Mid', 2, cur_Mid);
           vis.array.assignVariable('R', 2, cur_R);
-          // colour all of L list
-          let Tails = Lists[2];
-          for (let i = cur_L; i !== 'Null'; i = Tails[i]) {
+
+          let T = Lists[2];
+          for (let i = cur_L; i !== 'Null'; i = T[i]) {
             vis.array.select(1, i, 1, i, runAColor);
             vis.array.select(2, i, 2, i, runAColor);
           }
-          // colour all of R list
-          Tails = Lists[2];
-          for (let i = cur_R; i !== 'Null'; i = Tails[i]) {
+          T = Lists[2];
+          for (let i = cur_R; i !== 'Null'; i = T[i]) {
             vis.array.select(1, i, 1, i, runBColor);
             vis.array.select(2, i, 2, i, runBColor);
           }
 
-          // ---------------------------------- LinkedList 视图更新逻辑 ----------------------------------
-          // new add code: 同步真实指针（断链后）到指针视图（若 tracer 支持）
-          if (vis.list.updateConnections) vis.list.updateConnections(Lists[2]); // Lists[2] == Tails  // new add code
+          // 链表视图同步 + 著色 + 隐藏
+          ll_updateConnections(vis, Lists[2]);             // new add code
+          ll_colorWholeChainFrom(vis, Lists, cur_L, 1);    // new add code（左：#ffb000）
+          if (cur_R !== 'Null') {
+            ll_colorWholeChainFrom(vis, Lists, cur_R, 2);  // new add code（右：#2f8cff）
+          }
+          if (cur_len !== 2 && cur_R !== 'Null') {
+            ll_hideChainFrom(vis, cur_R);                  // new add code
+          } else {
+            // renderTwoSingletons(vis, cur_L, cur_R, Lists[1], 'two single nodes'); // 可选视觉
+          }
+        }, [[Indices, Heads, Tails], L, Mid, R, simple_stack, len], depth); // new add code: 传 len
 
-          // new add code: 规则
-          // - len==2：左右各 1 个节点 → 两边都保留显示（不隐藏右边）
-          // - 其他：只显示左链（相当于隐藏右链）
-          if (cur_len === 2) { // new add code
-            renderTwoSingletons(vis, cur_L, cur_R, Lists[1], 'two single nodes'); // new add code
-          } else { // new add code
-            renderLeftOnly(vis, cur_L, Lists[2], Lists[1], 'left sublist only'); // new add code
-          } // new add code
-          // --------------------------------------------------------------------------------------------
-          }, [[Indices, Heads, Tails], L, Mid, R, simple_stack, len], depth); // new add code: 传 len
-
-        // dummy chunk for before recursive call - we need this so there
-        // is a chunk at this recursion level as the first chunk in the
-        // collapsed code for the recursive call
+        // ===== 递归左半 =====
         chunker.add('preSortL', (vis, Lists, cur_L, cur_Mid, cur_R, c_stk) => {
           vis.array.set(Lists, 'msort_lista_td');
           set_simple_stack(vis.array, c_stk);
           vis.array.assignVariable('L', 2, cur_L);
           vis.array.select(1, cur_L, 1, cur_L, runAColor);
           vis.array.select(2, cur_L, 2, cur_L, runAColor);
-          }, [[Indices, Heads, Tails], L, Mid, R, simple_stack], depth);
-
+        }, [[Indices, Heads, Tails], L, Mid, R, simple_stack], depth);
 
         L = MergeSort(L, midNum, depth + 1);
 
-        // chunk after recursive call - it's good to highlight the
-        // recursive call once it has returned plus we need a chunk at
-        // this level when the recursive code is collapsed
         chunker.add('sortL', (vis, Lists, cur_L, cur_R, cur_Mid, c_stk) => {
           vis.array.set(Lists, 'msort_lista_td');
           set_simple_stack(vis.array, c_stk);
           vis.array.assignVariable('L', 2, cur_L);
           vis.array.assignVariable('R', 2, cur_R);
-          // colour all of L list
-          let Tails = Lists[2];
-          for (let i = cur_L; i !== 'Null'; i = Tails[i]) {
+          let T = Lists[2];
+          for (let i = cur_L; i !== 'Null'; i = T[i]) {
             vis.array.select(1, i, 1, i, runAColor);
             vis.array.select(2, i, 2, i, runAColor);
           }
-          // colour all of R list
-          Tails = Lists[2];
-          for (let i = cur_R; i !== 'Null'; i = Tails[i]) {
+          T = Lists[2];
+          for (let i = cur_R; i !== 'Null'; i = T[i]) {
             vis.array.select(1, i, 1, i, runBColor);
             vis.array.select(2, i, 2, i, runBColor);
           }
           vis.array.select(1, cur_R, 1, cur_R, runBColor);
           vis.array.select(2, cur_R, 2, cur_R, runBColor);
-          }, [[Indices, Heads, Tails], L, R, Mid, simple_stack], depth);
+        }, [[Indices, Heads, Tails], L, R, Mid, simple_stack], depth);
 
-        // dummy chunk before recursive call, as above
+        // ===== 递归右半 =====
         chunker.add('preSortR', (vis, Lists, cur_L, cur_Mid, cur_R, c_stk) => {
           vis.array.set(Lists, 'msort_lista_td');
           set_simple_stack(vis.array, c_stk);
-          // vis.array.assignVariable('L', 2, undefined);
           vis.array.assignVariable('R', 2, cur_R);
           vis.array.select(1, cur_R, 1, cur_R, runBColor);
           vis.array.select(2, cur_R, 2, cur_R, runBColor);
-          }, [[Indices, Heads, Tails], L, Mid, R, simple_stack], depth);
+        }, [[Indices, Heads, Tails], L, Mid, R, simple_stack], depth);
 
         R = MergeSort(R, len - midNum, depth + 1);
 
-        // chunk after recursive call
-        chunker.add('sortR', (vis, Lists, cur_L, cur_R,
-c_stk) => {
+        chunker.add('sortR', (vis, Lists, cur_L, cur_R, c_stk) => {
           vis.array.set(Lists, 'msort_lista_td');
           set_simple_stack(vis.array, c_stk);
           vis.array.assignVariable('L', 2, cur_L);
           vis.array.assignVariable('R', 2, cur_R);
-          // colour all of L list
-          let Tails = Lists[2];
-          for (let i = cur_L; i !== 'Null'; i = Tails[i]) {
+          let T = Lists[2];
+          for (let i = cur_L; i !== 'Null'; i = T[i]) {
             vis.array.select(1, i, 1, i, runAColor);
             vis.array.select(2, i, 2, i, runAColor);
           }
-          // colour all of R list
-          Tails = Lists[2];
-          for (let i = cur_R; i !== 'Null'; i = Tails[i]) {
+          T = Lists[2];
+          for (let i = cur_R; i !== 'Null'; i = T[i]) {
             vis.array.select(1, i, 1, i, runBColor);
             vis.array.select(2, i, 2, i, runBColor);
           }
-          }, [[Indices, Heads, Tails], L, R, simple_stack], depth);
+        }, [[Indices, Heads, Tails], L, R, simple_stack], depth);
 
-          // Merge L and R
-          let M; // result
-          chunker.add('compareHeads', (vis, Lists, cur_L, cur_R, c_stk) => {
-            vis.array.deselect(1, cur_L);
-            vis.array.select(1, cur_L, 1, cur_L, apColor);
-            vis.array.deselect(1, cur_R);
-            vis.array.select(1, cur_R, 1, cur_R, apColor);
-            }, [[Indices, Heads, Tails], L, R, simple_stack], depth);
-          if (Heads[L] <= Heads[R]) {
-              M = L;
-              L = Tails[L];
-          } else {
-              M = R;
-              R = Tails[R];
+        // ===== 合并 =====
+        let M;
+        chunker.add('compareHeads', (vis, Lists, cur_L, cur_R) => {
+          vis.array.deselect(1, cur_L);
+          vis.array.select(1, cur_L, 1, cur_L, apColor);
+          vis.array.deselect(1, cur_R);
+          vis.array.select(1, cur_R, 1, cur_R, apColor);
+        }, [[Indices, Heads, Tails], L, R, simple_stack], depth);
+
+        if (Heads[L] <= Heads[R]) { M = L; L = Tails[L]; }
+        else { M = R; R = Tails[R]; }
+
+        let E = M;
+        chunker.add('E', (vis, Lists, cur_L, cur_R, cur_M, cur_E, c_stk) => {
+          vis.array.set(Lists, 'msort_lista_td');
+          set_simple_stack(vis.array, c_stk);
+          assignMaybeNullVar(vis, 'L', cur_L);
+          assignMaybeNullVar(vis, 'R', cur_R);
+          vis.array.assignVariable('M', 2, cur_M);
+          vis.array.assignVariable('E', 2, cur_E);
+          let T = Lists[2];
+          for (let i = cur_L; i !== 'Null'; i = T[i]) {
+            vis.array.select(1, i, 1, i, runAColor);
+            vis.array.select(2, i, 2, i, runAColor);
           }
-          // scan through adding elements to the end of M
-          let E = M;
-          chunker.add('E', (vis, Lists, cur_L, cur_R, cur_M, cur_E, c_stk) => {
+          for (let i = cur_R; i !== 'Null'; i = T[i]) {
+            vis.array.select(1, i, 1, i, runBColor);
+            vis.array.select(2, i, 2, i, runBColor);
+          }
+          vis.array.select(1, cur_M, 1, cur_M, sortColor);
+          vis.array.select(2, cur_M, 2, cur_M, sortColor);
+        }, [[Indices, Heads, Tails], L, R, M, E, simple_stack], depth);
+
+        while (L !== 'Null' && R !== 'Null') {
+          chunker.add('whileNotNull', (vis, Lists, cur_L, cur_R, cur_M, cur_E, c_stk) => {
             vis.array.set(Lists, 'msort_lista_td');
             set_simple_stack(vis.array, c_stk);
             assignMaybeNullVar(vis, 'L', cur_L);
             assignMaybeNullVar(vis, 'R', cur_R);
             vis.array.assignVariable('M', 2, cur_M);
-            vis.array.assignVariable('E', 2, cur_E);
-            let Tails = Lists[2];
-            // colour all of L list
-            for (let i = cur_L; i !== 'Null'; i = Tails[i]) {
+            assignMaybeNullVar(vis, 'E', cur_E);
+            let T = Lists[2];
+            for (let i = cur_L; i !== 'Null'; i = T[i]) {
               vis.array.select(1, i, 1, i, runAColor);
               vis.array.select(2, i, 2, i, runAColor);
             }
-            // colour all of R list
-            for (let i = cur_R; i !== 'Null'; i = Tails[i]) {
+            for (let i = cur_R; i !== 'Null'; i = T[i]) {
               vis.array.select(1, i, 1, i, runBColor);
               vis.array.select(2, i, 2, i, runBColor);
             }
-            vis.array.select(1, cur_M, 1, cur_M, sortColor);
-            vis.array.select(2, cur_M, 2, cur_M, sortColor);
-            }, [[Indices, Heads, Tails], L, R, M, E, simple_stack], depth);
-          while (L !== 'Null' && R !== 'Null') {
-            chunker.add('whileNotNull', (vis, Lists, cur_L, cur_R, cur_M, cur_E, c_stk) => {
+            for (let i = cur_M; i !== cur_E; i = T[i]) {
+              vis.array.select(1, i, 1, i, sortColor);
+              vis.array.select(2, i, 2, i, sortColor);
+            }
+            if (cur_E !== 'Null') {
+              vis.array.select(1, cur_E, 1, cur_E, sortColor);
+              vis.array.select(2, cur_E, 2, cur_E, sortColor);
+            }
+          }, [[Indices, Heads, Tails], L, R, M, E, simple_stack], depth);
+
+          chunker.add('findSmaller', (vis, Lists, cur_L, cur_R) => {
+            vis.array.deselect(1, cur_L);
+            vis.array.select(1, cur_L, 1, cur_L, apColor);
+            vis.array.deselect(1, cur_R);
+            vis.array.select(1, cur_R, 1, cur_R, apColor);
+          }, [[Indices, Heads, Tails], L, R, simple_stack], depth);
+
+          if (Heads[L] <= Heads[R]) {
+            Tails[E] = L; E = L; L = Tails[L];
+            chunker.add('popL', (vis, Lists, cur_L, cur_R, cur_M, cur_E, c_stk) => {
               vis.array.set(Lists, 'msort_lista_td');
               set_simple_stack(vis.array, c_stk);
               assignMaybeNullVar(vis, 'L', cur_L);
               assignMaybeNullVar(vis, 'R', cur_R);
               vis.array.assignVariable('M', 2, cur_M);
               assignMaybeNullVar(vis, 'E', cur_E);
-              let Tails = Lists[2];
-              // colour all of L list
-              for (let i = cur_L; i !== 'Null'; i = Tails[i]) {
+              let T = Lists[2];
+              for (let i = cur_L; i !== 'Null'; i = T[i]) {
                 vis.array.select(1, i, 1, i, runAColor);
                 vis.array.select(2, i, 2, i, runAColor);
               }
-              // colour all of R list
-              for (let i = cur_R; i !== 'Null'; i = Tails[i]) {
+              for (let i = cur_R; i !== 'Null'; i = T[i]) {
                 vis.array.select(1, i, 1, i, runBColor);
                 vis.array.select(2, i, 2, i, runBColor);
               }
-              // colour all of M list, up to + including cur_E
-              // (we don't color up to Null because the tail of E hasn't
-              // been smashed)
-              for (let i = cur_M; i !== cur_E; i = Tails[i]) {
+              for (let i = cur_M; i !== cur_E; i = T[i]) {
                 vis.array.select(1, i, 1, i, sortColor);
                 vis.array.select(2, i, 2, i, sortColor);
               }
@@ -501,379 +420,127 @@ c_stk) => {
                 vis.array.select(2, cur_E, 2, cur_E, sortColor);
               }
             }, [[Indices, Heads, Tails], L, R, M, E, simple_stack], depth);
-            chunker.add('findSmaller', (vis, Lists, cur_L, cur_R, c_stk) => {
-              vis.array.deselect(1, cur_L);
-              vis.array.select(1, cur_L, 1, cur_L, apColor);
-              vis.array.deselect(1, cur_R);
-              vis.array.select(1, cur_R, 1, cur_R, apColor);
-              }, [[Indices, Heads, Tails], L, R, simple_stack], depth);
-            if (Heads[L] <= Heads[R]) {
-              Tails[E] = L;
-              E = L;
-              L = Tails[L];
-              chunker.add('popL', (vis, Lists, cur_L, cur_R, cur_M, cur_E, c_stk) => {
-                vis.array.set(Lists, 'msort_lista_td');
-                set_simple_stack(vis.array, c_stk);
-                assignMaybeNullVar(vis, 'L', cur_L);
-                assignMaybeNullVar(vis, 'R', cur_R);
-                vis.array.assignVariable('M', 2, cur_M);
-                assignMaybeNullVar(vis, 'E', cur_E);
-                let Tails = Lists[2];
-                // colour all of L list
-                for (let i = cur_L; i !== 'Null'; i = Tails[i]) {
-                  vis.array.select(1, i, 1, i, runAColor);
-                  vis.array.select(2, i, 2, i, runAColor);
-                }
-                // colour all of R list
-                for (let i = cur_R; i !== 'Null'; i = Tails[i]) {
-                  vis.array.select(1, i, 1, i, runBColor);
-                  vis.array.select(2, i, 2, i, runBColor);
-                }
-                // colour all of M list, up to + including cur_E
-                for (let i = cur_M; i !== cur_E; i = Tails[i]) {
-                  vis.array.select(1, i, 1, i, sortColor);
-                  vis.array.select(2, i, 2, i, sortColor);
-                }
-                if (cur_E !== 'Null') {
-                  vis.array.select(1, cur_E, 1, cur_E, sortColor);
-                  vis.array.select(2, cur_E, 2, cur_E, sortColor);
-                }
-              }, [[Indices, Heads, Tails], L, R, M, E, simple_stack], depth);
-            } else {
-              Tails[E] = R;
-              E = R;
-              R = Tails[R];
-              chunker.add('popR', (vis, Lists, cur_L, cur_R, cur_M, cur_E, c_stk) => {
-                vis.array.set(Lists, 'msort_lista_td');
-                set_simple_stack(vis.array, c_stk);
-                assignMaybeNullVar(vis, 'L', cur_L);
-                assignMaybeNullVar(vis, 'R', cur_R);
-                vis.array.assignVariable('M', 2, cur_M);
-                assignMaybeNullVar(vis, 'E', cur_E);
-                let Tails = Lists[2];
-                // colour all of L list
-                for (let i = cur_L; i !== 'Null'; i = Tails[i]) {
-                  vis.array.select(1, i, 1, i, runAColor);
-                  vis.array.select(2, i, 2, i, runAColor);
-                }
-                // colour all of R list
-                for (let i = cur_R; i !== 'Null'; i = Tails[i]) {
-                  vis.array.select(1, i, 1, i, runBColor);
-                  vis.array.select(2, i, 2, i, runBColor);
-                }
-                // colour all of M list, up to + including cur_E
-                for (let i = cur_M; i !== cur_E; i = Tails[i]) {
-                  vis.array.select(1, i, 1, i, sortColor);
-                  vis.array.select(2, i, 2, i, sortColor);
-                }
-                if (cur_E !== 'Null') {
-                  vis.array.select(1, cur_E, 1, cur_E, sortColor);
-                  vis.array.select(2, cur_E, 2, cur_E, sortColor);
-                }
-              }, [[Indices, Heads, Tails], L, R, M, E, simple_stack], depth);
-            }
-          }
-          // add any elements not scanned to the end of M
-          if (L === 'Null') {
-            Tails[E] = R;
-            chunker.add('appendR', (vis, Lists, cur_L, cur_R, cur_M, cur_E, c_stk) => {
-              vis.array.set(Lists, 'msort_lista_td');
-              set_simple_stack(vis.array, c_stk);
-              vis.array.assignVariable('M', 2, cur_M);
-              // colour all of M list
-              let Tails = Lists[2];
-              for (let i = cur_M; i !== 'Null'; i = Tails[i]) {
-                vis.array.select(1, i, 1, i, sortColor);
-                vis.array.select(2, i, 2, i, sortColor);
-              }
-
-              // new add code: 合并完成 → 同步真实指针关系并“只显示合并结果链”
-              if (vis.list.updateConnections) vis.list.updateConnections(Lists[2]); // new add code
-              // 使用从 M 出发的真实链（按 Tails）进行展示
-              const mergedVals = buildListValuesFromHead(cur_M, Lists[2], Lists[1]); // new add code
-              vis.list.set(mergedVals, 'merged'); // new add code
-
-            }, [[Indices, Heads, Tails], L, R, M, E, simple_stack], depth);
           } else {
-            Tails[E] = L;
-            chunker.add('appendL', (vis, Lists, cur_L, cur_R, cur_M, cur_E, c_stk) => {
+            Tails[E] = R; E = R; R = Tails[R];
+            chunker.add('popR', (vis, Lists, cur_L, cur_R, cur_M, cur_E, c_stk) => {
               vis.array.set(Lists, 'msort_lista_td');
               set_simple_stack(vis.array, c_stk);
+              assignMaybeNullVar(vis, 'L', cur_L);
+              assignMaybeNullVar(vis, 'R', cur_R);
               vis.array.assignVariable('M', 2, cur_M);
-              // colour all of M list
-              let Tails = Lists[2];
-              for (let i = cur_M; i !== 'Null'; i = Tails[i]) {
+              assignMaybeNullVar(vis, 'E', cur_E);
+              let T = Lists[2];
+              for (let i = cur_L; i !== 'Null'; i = T[i]) {
+                vis.array.select(1, i, 1, i, runAColor);
+                vis.array.select(2, i, 2, i, runAColor);
+              }
+              for (let i = cur_R; i !== 'Null'; i = T[i]) {
+                vis.array.select(1, i, 1, i, runBColor);
+                vis.array.select(2, i, 2, i, runBColor);
+              }
+              for (let i = cur_M; i !== cur_E; i = T[i]) {
                 vis.array.select(1, i, 1, i, sortColor);
                 vis.array.select(2, i, 2, i, sortColor);
               }
-
-              // new add code: 合并完成 → 同步真实指针关系并“只显示合并结果链”
-              if (vis.list.updateConnections) vis.list.updateConnections(Lists[2]); // new add code
-              const mergedVals = buildListValuesFromHead(cur_M, Lists[2], Lists[1]); // new add code
-              vis.list.set(mergedVals, 'merged'); // new add code
-
+              if (cur_E !== 'Null') {
+                vis.array.select(1, cur_E, 1, cur_E, sortColor);
+                vis.array.select(2, cur_E, 2, cur_E, sortColor);
+              }
             }, [[Indices, Heads, Tails], L, R, M, E, simple_stack], depth);
           }
-          chunker.add('returnM', (vis, Lists, cur_L, cur_M, c_stk) => {
+        }
+
+        // ===== 追加剩余并完成一段合并（这里做“重排”） =====
+        if (L === 'Null') {
+          Tails[E] = R;
+          chunker.add('appendR', (vis, Lists, cur_L, cur_R, cur_M, cur_E, c_stk) => {
             vis.array.set(Lists, 'msort_lista_td');
             set_simple_stack(vis.array, c_stk);
-            vis.array.assignVariable('L', 2, undefined);
-            vis.array.assignVariable('R', 2, undefined);
-            vis.array.assignVariable('E', 2, undefined);
             vis.array.assignVariable('M', 2, cur_M);
-            // colour all of M list
-            let Tails = Lists[2];
-            for (let i = cur_M; i !== 'Null'; i = Tails[i]) {
+            let T = Lists[2];
+            for (let i = cur_M; i !== 'Null'; i = T[i]) {
               vis.array.select(1, i, 1, i, sortColor);
               vis.array.select(2, i, 2, i, sortColor);
             }
-            }, [[Indices, Heads, Tails], L, M, simple_stack], depth);
 
+            // —— 同步指针 + 取消隐藏 + 触发链表“按当前指针顺序”重排 —— // new add code
+            ll_updateConnections(vis, Lists[2]);           // new add code
+            ll_showAll(vis);                               // new add code
+            ll_renderFromHead(vis, Lists, cur_M, 'merged'); // new add code  <-- 关键：让可视节点按 Tails 顺序重新布局
 
-/*
-        // XXX should we shorten psuedocode? eg, (ap1,max1) <- (left,mid)
-        let ap1 = left;
-        let max1 = mid;
-        let ap2 = mid+1;
-        let max2 = right;
-        let bp = left;
-
-        chunker.add('ap1', (vis, a, cur_left, cur_mid, cur_right) => {
-          // disable stack display during merge: hopefully its not
-          // confusing, it avoids extra distraction and the position of
-          // the stack and array B can sometimes overlap:(
-          // vis.array.set(a, 'msort_lista_td');
-          set_simple_stack(vis.array, undefined);
-          for (let i = cur_mid+1; i <= cur_right; i++) {
-            unhighlight(vis, i, false)
-          }
-          if (isMergeExpanded()) {
-            assignVarToA(vis, 'left', undefined);
-            assignVarToA(vis, 'ap1', cur_left);
-            highlight(vis, cur_left, true);
-          }
-          }, [A, left, mid, right], depth);
-        chunker.add('max1', (vis, a, cur_left, cur_mid, cur_right) => {
-          if (isMergeExpanded()) {
-            assignVarToA(vis, 'mid', undefined);
-            assignVarToA(vis, 'max1', cur_mid);
-          }
-          }, [A, left, mid, right], depth);
-        chunker.add('ap2', (vis, a, cur_left, cur_mid, cur_right) => {
-          if (isMergeExpanded()) {
-            assignVarToA(vis, 'ap2', cur_mid+1);
-            highlight(vis, cur_mid+1, true);
-          }
-          }, [A, left, mid, right], depth);
-        chunker.add('max2', (vis, a, cur_left, cur_mid, cur_right) => {
-          if (isMergeExpanded()) {
-            assignVarToA(vis, 'right', undefined);
-            assignVarToA(vis, 'max2', right);
-          }
-          }, [A, left, mid, right], depth);
-        chunker.add('bp', (vis, a, cur_left, cur_mid, cur_right) => {
-          if (isMergeExpanded()) {
-            assignVarToB(vis, 'bp', left);
-          }
-          }, [A, left, mid, right], depth);
-
-        // while (ap1 <= max1 && ap2 <= max2) 
-        // eslint-disable no-constant-condition
-        while (true) {
-          chunker.add('MergeWhile', (vis, a, b, cur_ap1, cur_ap2,
-cur_bp, cur_max1, cur_max2, cur_stk, cur_left) => {
-            renderInMerge(vis, a, b, cur_left, cur_ap1, cur_ap2, cur_bp, cur_max1,
-cur_max2, cur_stk, cur_left);
-            }, [A, B, ap1, ap2, bp, max1, max2, simple_stack, left], depth);
-
-         if (!(ap1 <= max1 && ap2 <= max2)) break;
-
-           chunker.add('findSmaller', (vis, a, b, cur_ap1, cur_ap2,
-cur_bp, cur_max1, cur_max2, cur_stk, cur_left) => {
-             renderInMerge(vis, a, b, cur_left, cur_ap1, cur_ap2, cur_bp,
-cur_max1, cur_max2, cur_stk, cur_left);
-             }, [A, B, ap1, ap2, bp, max1, max2, simple_stack, left], depth);
-
-           if (A[ap1] < A[ap2]) {
-             B[bp] = A[ap1];
-             A[ap1] = undefined;
-             chunker.add('copyap1', (vis, a, b, cur_ap1, cur_ap2,
-cur_bp, cur_max1, cur_max2, cur_stk, cur_left) => {
-               renderInMerge(vis, a, b, cur_left, cur_ap1, cur_ap2, cur_bp,
-cur_max1, cur_max2, cur_stk, cur_left);
-               if (isMergeExpanded()) {
-                 highlightB(vis, cur_bp, false);
-               }
-               }, [A, B, ap1, ap2, bp, max1, max2, simple_stack, left], depth);
-             ap1 = ap1+1;
-             chunker.add('ap1++', (vis, a, b, cur_ap1, cur_ap2, cur_bp,
-cur_max1, cur_max2, cur_stk, cur_left) => {
-               renderInMerge(vis, a, b, cur_left, cur_ap1, cur_ap2, cur_bp,
-cur_max1, cur_max2, cur_stk, cur_left);
-               if (isMergeExpanded()) {
-                 highlightB(vis, cur_bp, false);
-               }
-               }, [A, B, ap1, ap2, bp, max1, max2, simple_stack, left], depth);
-             bp = bp+1;
-             chunker.add('bp++', (vis, a, b, cur_ap1, cur_ap2, cur_bp,
-cur_max1, cur_max2, cur_stk, cur_left) => {
-               renderInMerge(vis, a, b, cur_left, cur_ap1, cur_ap2, cur_bp,
-cur_max1, cur_max2, cur_stk, cur_left);
-               }, [A, B, ap1, ap2, bp, max1, max2, simple_stack, left], depth);
-           } else {
-             B[bp] = A[ap2];
-             A[ap2] = undefined;
-             chunker.add('copyap2', (vis, a, b, cur_ap1, cur_ap2,
-cur_bp, cur_max1, cur_max2, cur_stk, cur_left) => {
-               renderInMerge(vis, a, b, cur_left, cur_ap1, cur_ap2, cur_bp,
-cur_max1, cur_max2, cur_stk, cur_left);
-               if (isMergeExpanded()) {
-                 highlightB(vis, cur_bp, false);
-               }
-               }, [A, B, ap1, ap2, bp, max1, max2, simple_stack, left], depth);
-             ap2 = ap2+1;
-             chunker.add('ap2++', (vis, a, b, cur_ap1, cur_ap2, cur_bp,
-cur_max1, cur_max2, cur_stk, cur_left) => {
-               renderInMerge(vis, a, b, cur_left, cur_ap1, cur_ap2, cur_bp,
-cur_max1, cur_max2, cur_stk, cur_left);
-               if (isMergeExpanded()) {
-                 highlightB(vis, cur_bp, false);
-               }
-               }, [A, B, ap2, ap2, bp, max1, max2, simple_stack, left], depth);
-             bp = bp+1;
-             chunker.add('bp++_2', (vis, a, b, cur_ap1, cur_ap2, cur_bp,
-cur_max1, cur_max2, cur_stk, cur_left) => {
-               renderInMerge(vis, a, b, cur_left, cur_ap1, cur_ap2, cur_bp,
-cur_max1, cur_max2, cur_stk, cur_left);
-               }, [A, B, ap1, ap2, bp, max1, max2, simple_stack, left], depth);
-           }
-         }
-
-         for (let i = ap1; i <= max1; i++) {
-           B[bp] = A[i];
-           A[i] = undefined;
-           bp = bp+1;
-         }
-
-         chunker.add('CopyRest1', (vis, a, b, cur_left, cur_ap1,
-cur_ap2, cur_max1, cur_max2, cur_bp, c_stk) => {
-          if (isMergeExpanded()) {
-            vis.array.set(a, 'msort_lista_td');
-            // set_simple_stack(vis.array, c_stk);
-            // unhighlight(vis, cur_ap1, true);
-            // assignVarToA(vis, 'ap1', undefined);
-            // assignVarToA(vis, 'max1', undefined);
-            if (cur_ap2 < a.length)
-              assignVarToA(vis, 'ap2', cur_ap2);
-            assignVarToA(vis, 'max2', cur_max2);
-            vis.arrayB.set(b, 'msort_lista_td');
-            for (let i = cur_left; i <= cur_bp-1; i++) {
-              highlightB(vis, i, false);
+          }, [[Indices, Heads, Tails], L, R, M, E, simple_stack], depth);
+        } else {
+          Tails[E] = L;
+          chunker.add('appendL', (vis, Lists, cur_L, cur_R, cur_M, cur_E, c_stk) => {
+            vis.array.set(Lists, 'msort_lista_td');
+            set_simple_stack(vis.array, c_stk);
+            vis.array.assignVariable('M', 2, cur_M);
+            let T = Lists[2];
+            for (let i = cur_M; i !== 'Null'; i = T[i]) {
+              vis.array.select(1, i, 1, i, sortColor);
+              vis.array.select(2, i, 2, i, sortColor);
             }
-            if (cur_bp < a.length) {
-              assignVarToB(vis, 'bp', cur_bp);
-            } else {
-              assignVarToB(vis, 'bp', undefined);  // XXX anination unclear?
-            }
-          }
-          }, [A, B, left, ap1, ap2, max1, max2, bp, simple_stack], depth);
 
-         for (let i = ap2; i <= max2; i++) {
-           B[bp] = A[i];
-           A[i] = undefined;
-           bp = bp+1;
-         }
+            // —— 同步指针 + 取消隐藏 + 触发链表重排 —— // new add code
+            ll_updateConnections(vis, Lists[2]);           // new add code
+            ll_showAll(vis);                               // new add code
+            ll_renderFromHead(vis, Lists, cur_M, 'merged'); // new add code  <-- 关键
 
-         chunker.add('CopyRest2', (vis, a, b, cur_left, cur_right, cur_ap2,
-cur_max2, cur_b, c_stk) => {
-          if (isMergeCopyExpanded()) {
-            vis.array.set(a, 'msort_lista_td');
-            // set_simple_stack(vis.array, c_stk);
-            vis.arrayB.set(b, 'msort_lista_td');
-            for (let i = cur_left; i <= cur_right; i++) {
-              highlightB(vis, i, false);
-            }
-          }
-          if (isMergeExpanded()) {
-            if (cur_ap2 < a.length) {
-              unhighlight(vis, cur_ap2, true);
-              assignVarToA(vis, 'ap2', undefined);
-            }
-            assignVarToA(vis, 'max2', undefined);
-            assignVarToB(vis, 'bp', undefined);
-          }
-          }, [A, B, left, right, ap2, max2, bp, simple_stack], depth);
-
-        for (let i = left; i <= right; i++) {
-          A[i] = B[i];
-          B[i] = undefined;
+          }, [[Indices, Heads, Tails], L, R, M, E, simple_stack], depth);
         }
-        chunker.add('copyBA', (vis, a, b, cur_left, cur_mid,
-cur_right, c_stk) => {
-          if (isMergeCopyExpanded()) {
-            for (let i = cur_left; i <= cur_right; i++) {
-              // unhighlightB(vis, i, false);
-            }
-            vis.arrayB.set(b, 'msort_lista_td');
-          }
-          vis.array.set(a, 'msort_lista_td');
+
+        chunker.add('returnM', (vis, Lists, cur_L, cur_M, c_stk) => {
+          vis.array.set(Lists, 'msort_lista_td');
           set_simple_stack(vis.array, c_stk);
-          for (let i = cur_left; i <= cur_right; i++) {
-            highlight(vis, i, false);
+          vis.array.assignVariable('L', 2, undefined);
+          vis.array.assignVariable('R', 2, undefined);
+          vis.array.assignVariable('E', 2, undefined);
+          vis.array.assignVariable('M', 2, cur_M);
+          let T = Lists[2];
+          for (let i = cur_M; i !== 'Null'; i = T[i]) {
+            vis.array.select(1, i, 1, i, sortColor);
+            vis.array.select(2, i, 2, i, sortColor);
           }
-          if (isMergeExpanded()) {
-            assignVarToA(vis, 'ap1', undefined);
-            assignVarToA(vis, 'max1', undefined);
-            assignVarToA(vis, 'ap2', undefined);
-            assignVarToA(vis, 'max2', undefined);
-          }
-          }, [A, B, left, mid, right, simple_stack], depth);
-*/
-        // chunk after recursive call, as above, after adjusting
-        // stack frames/depth etc
-        L = M;  // just for return below
-      }
-        // XXX should we delete 'else' and always go to the 'Done' line
-        // even for non-trivial array segments? (might need to
-        // generalise (un)highlight code below
-        else
-      {
+        }, [[Indices, Heads, Tails], L, M, simple_stack], depth);
+
+        L = M; // return head of merged list
+      } else {
         chunker.add('returnL', (vis, a, cur_L) => {
           vis.array.select(1, cur_L, 1, cur_L, '1');
           vis.array.select(2, cur_L, 2, cur_L, '1');
-          }, [A, L], depth);
+        }, [A, L], depth);
       }
 
       simple_stack.shift();
       return L;
     }
 
-
-    // ----------------------------------------------------------------------------------------------------------------------------
-    // Perform actual mergesort
-    // ----------------------------------------------------------------------------------------------------------------------------
-
-    // XXXXXXXXX
+    // -------------------------------- Perform actual mergesort --------------------------------
     Indices = ['i'];
-    Heads = ['i.head (data)'];
-    Tails = ['i.tail (next)'];
+    Heads   = ['i.head (data)'];
+    Tails   = ['i.tail (next)'];
     simple_stack = [];
- 
-    for (let i = 1; i<entire_num_array.length; i++) {
+
+    for (let i = 1; i < entire_num_array.length; i++) {
       Indices.push(i);
-      Heads.push(entire_num_array[i-1]);
-      Tails.push(i+1);
+      Heads.push(entire_num_array[i - 1]);
+      Tails.push(i + 1);
     }
-    Tails[entire_num_array.length-1] = 'Null';
+    Tails[entire_num_array.length - 1] = 'Null';
 
     const msresult = MergeSort(1, entire_num_array.length - 1, 0);
-    let lastLine = (entire_num_array.length > 1 ? 'returnM': 'returnL');
-    chunker.add(lastLine, (vis, a) => {
+
+    // 最后一帧：array 着色 + 链表按最终指针顺序重排（确保完全有序从左到右）
+    let lastLine = (entire_num_array.length > 1 ? 'returnM' : 'returnL');
+    chunker.add(lastLine, (vis, Lists, finalHead) => {            // new add code
       for (let i = 1; i < entire_num_array.length; i++) {
         vis.array.select(1, i, 1, i, doneColor);
         vis.array.select(2, i, 2, i, doneColor);
       }
-      }, [A], 1);
+      ll_updateConnections(vis, Lists[2]);                        // new add code
+      ll_showAll(vis);                                            // new add code
+      ll_renderFromHead(vis, Lists, finalHead, 'final');          // new add code  <-- 关键：最终重排
+    }, [[Indices, Heads, Tails], msresult], 1);                   // new add code: 把 Lists 和最终头结点一起传入
 
     return msresult;
   }
