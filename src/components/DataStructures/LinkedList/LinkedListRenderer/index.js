@@ -21,10 +21,7 @@ class LinkedListRenderer extends Array2DRenderer {
     const DOT_SIZE  = 5;
     const DOT_RIGHT = (CAP_W - DOT_SIZE) / 2;
 
-    const H_GAP = 40; // 自定义间距
-
     // 由于 .node 使用 translate(-50%, -50%)，pos 即“中心坐标”
-    //const dotCenterX = n => n.pos.x + NODE_W/2 - DOT_RIGHT - DOT_SIZE/2 + n.index * H_GAP;
     const dotCenterX = n => n.pos.x + NODE_W / 2 - DOT_RIGHT - DOT_SIZE / 2 - 30;
     const dotCenterY = n => n.pos.y;
 
@@ -57,63 +54,57 @@ class LinkedListRenderer extends Array2DRenderer {
             style={{ position: 'absolute', inset: 0, pointerEvents: 'none', overflow: 'visible', background: 'transparent' }}
           >
             <defs>
-              {/*
-                ARROW_LEN = 三角形的水平长度（越小越短）
-                ARROW_H   = 三角形的总高度（上下各一半）
-              */}
               {(() => {
-                const ARROW_LEN = 5; // ← 改这里：比如 6 / 5 / 4
-                const ARROW_H   = 8; // 高度，通常保持 8 不动
+                const ARROW_LEN = 5;
+                const ARROW_H   = 8;
                 const HALF_H    = ARROW_H / 2;
 
-      return (
-        <marker
-          id="arrow-dark"
-          viewBox={`0 0 ${ARROW_LEN} ${ARROW_H}`} // 一定要和 path / refX 对齐
-          markerUnits="userSpaceOnUse"
-          markerWidth={ARROW_LEN}
-          markerHeight={ARROW_H}
-          refX={ARROW_LEN}
-          refY={HALF_H}
-          orient="auto"
-        >
-          {/* 尖头三角形（颜色跟随线条） */}
-          <path d={`M0,0 L${ARROW_LEN},${HALF_H} L0,${ARROW_H} Z`} fill="currentColor" />
-        </marker>
-        );
-        })()}
-      </defs>
+                return (
+                  <marker
+                    id="arrow-dark"
+                    viewBox={`0 0 ${ARROW_LEN} ${ARROW_H}`}
+                    markerUnits="userSpaceOnUse"
+                    markerWidth={ARROW_LEN}
+                    markerHeight={ARROW_H}
+                    refX={ARROW_LEN}
+                    refY={HALF_H}
+                    orient="auto"
+                  >
+                    <path d={`M0,0 L${ARROW_LEN},${HALF_H} L0,${ARROW_H} Z`} fill="currentColor" />
+                  </marker>
+                );
+              })()}
+            </defs>
 
-        {list.map(n => {
-        if (!n.nextKey || n.hidden) return null;  // 没有 nextKey 或 节点隐藏时，不画箭头
-        const to = nodes.get(n.nextKey);
-        if (!to || to.hidden) return null;  // 指向的节点不存在或隐藏时，不画箭头
+            {list.map(n => {
+              if (!n.nextKey || n.hidden) return null;
+              const to = nodes.get(n.nextKey);
+              if (!to || to.hidden) return null;
 
-        const x1 = dotCenterX(n);
-        const y1 = dotCenterY(n);
+              const x1 = dotCenterX(n);
+              const y1 = dotCenterY(n);
 
-        // 如果还想让“整条线”再短点（不是只有三角形短），就把 BODY_GAP 调大一些
-        const BODY_GAP = 25;                    // ← 例如设成 2 或 4
-        const x2 = targetX(to) - BODY_GAP;     // 线的终点往回收
-        const y2 = targetY(to);
-        
+              const BODY_GAP = 25;
+              const x2 = targetX(to) - BODY_GAP;
+              const y2 = targetY(to);
 
-        return (
-          <line
-            key={`e-${n.key}-${to.key}`}
-            x1={x1}
-            y1={y1}
-            x2={x2}
-            y2={y2}
-            markerEnd="url(#arrow-dark)"
-            className={styles.edge}
-            vectorEffect="non-scaling-stroke"
-            shapeRendering="geometricPrecision"
-            strokeLinecap="butt"
-          />
-        );
-        })}
-      </svg>
+              return (
+                <line
+                  key={`e-${n.key}-${to.key}`}
+                  x1={x1}
+                  y1={y1}
+                  x2={x2}
+                  y2={y2}
+                  markerEnd="url(#arrow-dark)"
+                  className={styles.edge}
+                  vectorEffect="non-scaling-stroke"
+                  shapeRendering="geometricPrecision"
+                  strokeLinecap="butt"
+                />
+              );
+            })}
+          </svg>
+
           {/* ===== 节点层 ===== */}
           <AnimateSharedLayout>
             {list.map(n => (
@@ -122,16 +113,16 @@ class LinkedListRenderer extends Array2DRenderer {
                 layout
                 className={[
                   styles.node,
-                  styles.variantGray,
+                  styles.variantGray,           // 默认胶囊底色（灰）
                   n.faded && styles.faded,
-                  n.hidden && styles.hidden,  // 支持隐藏
+                  n.hidden && styles.hidden,
                   n.sorted && styles.sorted,
                   n.patched && styles.patched,
                   n.selected && styles.selected,
-                  n.selected1 && styles.selected1,
-                  n.selected2 && styles.selected2,
-                  n.selected3 && styles.selected3,
-                  n.selected4 && styles.selected4,
+                  n.selected1 && styles.selected1, // amber（#ffb000）—— 你用于“左侧”
+                  n.selected2 && styles.selected2, // blue  （#2f8cff）—— 你用于“右侧”
+                  n.selected3 && styles.selected3, // new: 比较红（#ff4a4a）
+                  n.selected4 && styles.selected4, // new: 已合并绿（#69c587）
                   n.selected5 && styles.selected5,
                 ].filter(Boolean).join(' ')}
                 style={{

@@ -267,3 +267,28 @@
 .selected2 .value {
   color: #fff !important;
 }
+
+/* ====== new add code: 比较(红) & 已归并(绿) —— 直接填充节点颜色 ====== */
+.selected3 .pill { /* 比较中的节点：#ff4a4a */
+  outline: none !important;
+  background: linear-gradient(
+    90deg,
+    #ff4a4a 0 calc(100% - var(--cap-w)),
+    #d12f2f calc(100% - var(--cap-w))
+  ) !important;
+  border: 2px solid #3a3a3a;
+}
+.selected3 .value { color: #fff !important; }
+.selected3 .dot   { background: rgba(0,0,0,.25) !important; }
+
+.selected4 .pill { /* 已归并的节点：#69c587 */
+  outline: none !important;
+  background: linear-gradient(
+    90deg,
+    #69c587 0 calc(100% - var(--cap-w)),
+    #4ea46d calc(100% - var(--cap-w))
+  ) !important;
+  border: 2px solid #3a3a3a;
+}
+.selected4 .value { color: #fff !important; }
+.selected4 .dot   { background: rgba(0,0,0,.25) !important; }

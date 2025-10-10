@@ -220,6 +220,31 @@ export function run_msort() {
         vis.arrayB.assignVariable(variable_name, index);
     }
 
+    // ------------------------------- LinkedList view helpers (for your new animation rules) -------------------------------
+    // new add code: 从当前 Tails 指针结构出发，生成从某个头索引 head 出发的一条链的 values 数组
+    function buildListValuesFromHead(headIndex, tailsArr, headsArr) { // new add code
+      const out = [];
+      for (let i = headIndex; i !== 'Null'; i = tailsArr[i]) out.push(headsArr[i]);
+      return out;
+    }
+
+    // new add code: 渲染“只显示左链”（从 L 出发），右链相当于“隐藏”（不渲染）
+    function renderLeftOnly(vis, Lindex, tailsArr, headsArr, label) { // new add code
+      const arr = (Lindex === 'Null') ? [] : buildListValuesFromHead(Lindex, tailsArr, headsArr);
+      vis.list.set(arr, label);
+    }
+
+    // new add code: 渲染“两边都保留”的特殊情形（len==2）
+    // 说明：这里仅用于“展示两个单节点”；为了不提前“错误连边”，我们直接渲染两值组成的一条临时小链
+    // （真实指针关系仍然由 Array 视图 + 后续 updateConnections(Tails) 负责）
+    function renderTwoSingletons(vis, Lindex, Rindex, headsArr, label) { // new add code
+      const arr = [];
+      if (Lindex !== 'Null') arr.push(headsArr[Lindex]);
+      if (Rindex !== 'Null') arr.push(headsArr[Rindex]);
+      vis.list.set(arr, label);
+    }
+    // ----------------------------------------------------------------------------------------------------------------------------
+
     // ----------------------------------------------------------------------------------------------------------------------------
     // Define quicksort functions
     // ----------------------------------------------------------------------------------------------------------------------------
@@ -271,7 +296,7 @@ export function run_msort() {
       chunker.add('Main', (vis, Lists, cur_L, cur_len, cur_depth, c_stk) => {
         vis.array.set(Lists, 'msort_lista_td');
 
-        // 初始化 链表
+        // 初始化 链表（初始：展示整条链）
         vis.list.set(entire_num_array, 'mergeSort list init');
 
         vis.array.assignVariable('L', 2, cur_L);
@@ -281,11 +306,6 @@ export function run_msort() {
           vis.array.select(1, i, 1, i, runAColor);
           vis.array.select(2, i, 2, i, runAColor);
         }
-        // if (cur_depth === 0) {
-           // }
-        // for (let i = cur_left; i <= cur_right; i++) {
-          // highlight(vis, i, true)
-        // }
         set_simple_stack(vis.array, c_stk);
         }, [[Indices, Heads, Tails], L, len, depth, simple_stack], depth);
 
@@ -294,29 +314,20 @@ export function run_msort() {
 
       if (len > 1) {
         let midNum = Math.floor(len/2);
-        // chunker.add('mid', (vis, a, cur_left, cur_mid, cur_right) => {
-          // for (let i = cur_mid+1; i <= cur_right; i++) {
-            // unhighlight(vis, i, true)
-          // }
-          // assignVarToA(vis, 'mid', cur_mid);
-          // }, [A, left, mid, right], depth);
 
         let Mid = L;
         chunker.add('Mid', (vis, Lists, cur_L, cur_Mid, c_stk) => {
-          // vis.array.set(Lists, 'msort_lista_td');
-          // set_simple_stack(vis.array, c_stk);
           vis.array.assignVariable('Mid', 2, cur_Mid);
           }, [[Indices, Heads, Tails], L, Mid, simple_stack], depth);
-          // XXX chunker.add...
+
         for (let i = 1; i < midNum; i++) {
           Mid = Tails[Mid];
-          // XXX chunker.add...
         }
         // split L into lists L and R at (after) mid point
         let R = Tails[Mid];
         Tails[Mid] = 'Null';
         chunker.add('tail(Mid)<-Null', (vis, Lists, cur_L, cur_Mid,
-cur_R, c_stk) => {
+cur_R, c_stk, cur_len) => { // new add code: 传入 cur_len 以便判断 len==2
           vis.array.set(Lists, 'msort_lista_td');
           set_simple_stack(vis.array, c_stk);
           vis.array.assignVariable('L', 2, cur_L);
@@ -334,7 +345,21 @@ cur_R, c_stk) => {
             vis.array.select(1, i, 1, i, runBColor);
             vis.array.select(2, i, 2, i, runBColor);
           }
-          }, [[Indices, Heads, Tails], L, Mid, R, simple_stack], depth);
+
+          // ---------------------------------- LinkedList 视图更新逻辑 ----------------------------------
+          // new add code: 同步真实指针（断链后）到指针视图（若 tracer 支持）
+          if (vis.list.updateConnections) vis.list.updateConnections(Lists[2]); // Lists[2] == Tails  // new add code
+
+          // new add code: 规则
+          // - len==2：左右各 1 个节点 → 两边都保留显示（不隐藏右边）
+          // - 其他：只显示左链（相当于隐藏右链）
+          if (cur_len === 2) { // new add code
+            renderTwoSingletons(vis, cur_L, cur_R, Lists[1], 'two single nodes'); // new add code
+          } else { // new add code
+            renderLeftOnly(vis, cur_L, Lists[2], Lists[1], 'left sublist only'); // new add code
+          } // new add code
+          // --------------------------------------------------------------------------------------------
+          }, [[Indices, Heads, Tails], L, Mid, R, simple_stack, len], depth); // new add code: 传 len
 
         // dummy chunk for before recursive call - we need this so there
         // is a chunk at this recursion level as the first chunk in the
@@ -372,13 +397,6 @@ cur_R, c_stk) => {
           }
           vis.array.select(1, cur_R, 1, cur_R, runBColor);
           vis.array.select(2, cur_R, 2, cur_R, runBColor);
-          // for (let i = cur_left; i <= cur_mid; i++) {
-            // unhighlight(vis, i, true);
-            // highlight(vis, i, false)
-          // }
-          // for (let i = cur_mid+1; i <= cur_right; i++) {
-            // highlight(vis, i, true);
-          // }
           }, [[Indices, Heads, Tails], L, R, Mid, simple_stack], depth);
 
         // dummy chunk before recursive call, as above
@@ -389,12 +407,6 @@ cur_R, c_stk) => {
           vis.array.assignVariable('R', 2, cur_R);
           vis.array.select(1, cur_R, 1, cur_R, runBColor);
           vis.array.select(2, cur_R, 2, cur_R, runBColor);
-          // colour all of R list
-          // let Tails = Lists[2];
-          // for (let i = cur_R; i !== 'Null'; i = Tails[i]) {
-            // vis.array.select(1, i, 1, i, '1');
-            // vis.array.select(2, i, 2, i, '1');
-          // }
           }, [[Indices, Heads, Tails], L, Mid, R, simple_stack], depth);
 
         R = MergeSort(R, len - midNum, depth + 1);
@@ -402,7 +414,6 @@ cur_R, c_stk) => {
         // chunk after recursive call
         chunker.add('sortR', (vis, Lists, cur_L, cur_R,
 c_stk) => {
-          // vis.array.set(a, 'msort_lista_td');
           vis.array.set(Lists, 'msort_lista_td');
           set_simple_stack(vis.array, c_stk);
           vis.array.assignVariable('L', 2, cur_L);
@@ -419,11 +430,6 @@ c_stk) => {
             vis.array.select(1, i, 1, i, runBColor);
             vis.array.select(2, i, 2, i, runBColor);
           }
-
-          // for (let i = cur_mid+1; i <= cur_right; i++) {
-            // unhighlight(vis, i, true);
-            // unhighlight(vis, i, false)
-          // }
           }, [[Indices, Heads, Tails], L, R, simple_stack], depth);
 
           // Merge L and R
@@ -524,8 +530,6 @@ c_stk) => {
                   vis.array.select(2, i, 2, i, runBColor);
                 }
                 // colour all of M list, up to + including cur_E
-                // (we don't color up to Null because the tail of E hasn't
-                // been smashed)
                 for (let i = cur_M; i !== cur_E; i = Tails[i]) {
                   vis.array.select(1, i, 1, i, sortColor);
                   vis.array.select(2, i, 2, i, sortColor);
@@ -558,8 +562,6 @@ c_stk) => {
                   vis.array.select(2, i, 2, i, runBColor);
                 }
                 // colour all of M list, up to + including cur_E
-                // (we don't color up to Null because the tail of E hasn't
-                // been smashed)
                 for (let i = cur_M; i !== cur_E; i = Tails[i]) {
                   vis.array.select(1, i, 1, i, sortColor);
                   vis.array.select(2, i, 2, i, sortColor);
@@ -584,6 +586,13 @@ c_stk) => {
                 vis.array.select(1, i, 1, i, sortColor);
                 vis.array.select(2, i, 2, i, sortColor);
               }
+
+              // new add code: 合并完成 → 同步真实指针关系并“只显示合并结果链”
+              if (vis.list.updateConnections) vis.list.updateConnections(Lists[2]); // new add code
+              // 使用从 M 出发的真实链（按 Tails）进行展示
+              const mergedVals = buildListValuesFromHead(cur_M, Lists[2], Lists[1]); // new add code
+              vis.list.set(mergedVals, 'merged'); // new add code
+
             }, [[Indices, Heads, Tails], L, R, M, E, simple_stack], depth);
           } else {
             Tails[E] = L;
@@ -597,6 +606,12 @@ c_stk) => {
                 vis.array.select(1, i, 1, i, sortColor);
                 vis.array.select(2, i, 2, i, sortColor);
               }
+
+              // new add code: 合并完成 → 同步真实指针关系并“只显示合并结果链”
+              if (vis.list.updateConnections) vis.list.updateConnections(Lists[2]); // new add code
+              const mergedVals = buildListValuesFromHead(cur_M, Lists[2], Lists[1]); // new add code
+              vis.list.set(mergedVals, 'merged'); // new add code
+
             }, [[Indices, Heads, Tails], L, R, M, E, simple_stack], depth);
           }
           chunker.add('returnM', (vis, Lists, cur_L, cur_M, c_stk) => {
@@ -724,7 +739,7 @@ cur_max1, cur_max2, cur_stk, cur_left);
                if (isMergeExpanded()) {
                  highlightB(vis, cur_bp, false);
                }
-               }, [A, B, ap1, ap2, bp, max1, max2, simple_stack, left], depth);
+               }, [A, B, ap2, ap2, bp, max1, max2, simple_stack, left], depth);
              bp = bp+1;
              chunker.add('bp++_2', (vis, a, b, cur_ap1, cur_ap2, cur_bp,
 cur_max1, cur_max2, cur_stk, cur_left) => {
@@ -812,11 +827,6 @@ cur_right, c_stk) => {
             assignVarToA(vis, 'ap2', undefined);
             assignVarToA(vis, 'max2', undefined);
           }
-          // XXX best highlight cur_mid+1..right from previous
-          // recursion level?
-          // for (let i = cur_mid+1; i <= right; i++) {
-            // highlight(vis, i, true)
-          // }
           }, [A, B, left, mid, right, simple_stack], depth);
 */
         // chunk after recursive call, as above, after adjusting
@@ -831,10 +841,6 @@ cur_right, c_stk) => {
         chunker.add('returnL', (vis, a, cur_L) => {
           vis.array.select(1, cur_L, 1, cur_L, '1');
           vis.array.select(2, cur_L, 2, cur_L, '1');
-          // if (cur_left === cur_right) {
-            // unhighlight(vis, cur_left, true);
-            // highlight(vis, cur_left, false)
-          // }
           }, [A, L], depth);
       }
 
@@ -861,7 +867,6 @@ cur_right, c_stk) => {
     Tails[entire_num_array.length-1] = 'Null';
 
     const msresult = MergeSort(1, entire_num_array.length - 1, 0);
-    // const msresult = 0;
     let lastLine = (entire_num_array.length > 1 ? 'returnM': 'returnL');
     chunker.add(lastLine, (vis, a) => {
       for (let i = 1; i < entire_num_array.length; i++) {
@@ -873,4 +878,3 @@ cur_right, c_stk) => {
     return msresult;
   }
 }
-
