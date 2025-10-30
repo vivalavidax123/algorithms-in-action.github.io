@@ -1,252 +1,154 @@
 @import "../../common/stylesheet/index";
 
-/* ======================================================
-   🔹 Container & Stage
-   ====================================================== */
+/* =========================================
+   🔧 可调参数（只改这里就能快速整体微调）
+   ========================================= */
+$canvas-height: 280px;     // 画布高度（视频里约 260–300）
+$edge-stroke: 3px;         // 箭头线条粗细（2–4 之间按需取）
+$value-font-size: 18px;    // 胶囊内数字字号（18–22 之间按需取）
+$badge-font-size: 12px;    // 变量标签字号（10–12）
+$badge-rect-h: 18px;       // 变量标签高度
+$badge-rect-radius: 7px;   // 变量标签圆角
+$pill-stroke: 2px;         // 胶囊描边粗细
+$pill-highlight-stroke: 3px; // 选中/排序等高亮描边粗细
 
-/* The outer container wrapping the visualization stage */
-.container {
-  position: relative;      /* Allows absolutely positioned children */
-  overflow: visible;       /* Let arrows/nodes overflow */
-  margin-top: 20px;        /* Add top spacing */
+/* =========================================
+   SVG 根节点（由 LinkedListRenderer 渲染）
+   ========================================= */
+.svgRoot {
+  width: 100%;
+  height: $canvas-height;
+  overflow: visible;
 }
 
-/* The stage area where nodes and edges are rendered */
-.stage {
-  position: relative;
-  transform-origin: 0 0;   /* Scale/rotation pivot at top-left */
-  will-change: transform;  /* Optimize rendering for animations */
+/* Pointer 主题（与视频一致：字号/抗锯齿/字体） */
+.pointerTheme {
+  font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
-/* ======================================================
-   🔹 Edges & Arrowheads
-   ====================================================== */
+/* =========================================
+   箭 头 线（非缩放描边，缩放时粗细保持不变）
+   ========================================= */
 .edges {
-  /* Base arrow line: red stroke with smooth opacity transition */
+  position: initial;
+  z-index: 1;
+
   .edge {
     stroke: #ff3b3b;
-    stroke-width: 3px;
+    stroke-width: $edge-stroke;
     stroke-linecap: butt;
     stroke-linejoin: miter;
     opacity: 1;
     transition: opacity 0.45s ease;
+    fill: none;
+    vector-effect: non-scaling-stroke; // ✅ 避免缩放导致线条变粗变细
   }
 
-  /* Active arrow (slightly darker red) */
-  .edge--active {
-    stroke: #e53935;
-  }
-
-  /* Hidden edge: invisible and non-interactive */
-  .edge--hidden {
-    opacity: 0;
-    pointer-events: none;
-  }
-
-  /* Faded edge: for deemphasized connections */
-  .edge--faded {
-    opacity: 0.2;
-  }
-
-  /* Arrowhead fill color (solid dark grey) */
-  .arrowHead {
-    fill: #2e2e2e;
-  }
-
-  z-index: 3;             /* Render above nodes */
-  position: absolute;     /* Overlay entire stage */
+  .edge--active { stroke: #e53935; }
+  .edge--hidden { opacity: 0; pointer-events: none; }
+  .edge--faded  { opacity: 0.2; }
 }
 
-/* Circle at the start of each arrow */
-.edgeDot {
-  fill: #2e2e2e;
-}
-
-/* ======================================================
-   🔹 List Node Capsule
-   ====================================================== */
+/* =========================================
+   节 点（SVG <g>）
+   说明：SVG 下不要用 position/width/height/flex/grid
+   ========================================= */
 .node {
-  position: absolute;
-  box-sizing: border-box;
-  background: transparent;
-  padding: 0;
-  z-index: 2;             /* Render below edges */
   transition: opacity 0.25s ease;
-
-  /* Node size variables (easy global scaling) */
-  --node-w: 60px;
-  --node-h: 24px;
-  --cap-w: 18px;
-  --pill-radius: 8px;
-  --value-fs: 13px;
-
-  /* Dot positioning and size */
-  --dot-size: 6px;
-  --dot-right: calc((var(--cap-w) - var(--dot-size)) / 2);
-
-  width: var(--node-w);
-  height: var(--node-h);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-
-  /* Node capsule body */
-  .pill {
-    width: 100%;
-    height: 100%;
-    border-radius: var(--pill-radius);
-    display: grid;
-    grid-template-columns: 1fr var(--cap-w); /* Main area + right cap */
-    overflow: hidden;
-    border: 2px solid #3a3a3a;
-    box-shadow: 0 6px 16px rgba(0, 0, 0, .15);
-  }
-
-  /* Text inside the node */
-  .value {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: var(--value-fs);
-    font-weight: 600;
-    color: #f1f1f1;
-    user-select: none;
-  }
-
-  /* Right-side capsule cap */
-  .cap {
-    position: relative;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border-left: 2px solid #2b2b2b;
-  }
-
-  /* Deprecated divider (disabled to prevent overlap with dot) */
-  .divider {
-    display: none;
-  }
-
-  /* Small circular dot on the right cap */
-  .dot {
-    position: absolute;
-    right: var(--dot-right);
-    width: var(--dot-size);
-    height: var(--dot-size);
-    border-radius: 50%;
-    background: #4b4b4b;
-    box-shadow: 0 0 0 1px rgba(255, 255, 255, .25) inset;
-    z-index: 1;
-  }
-
-  /* Label group shown below node (e.g., variable names) */
-  .vars {
-    display: flex;
-    flex-direction: column; // stack vertically
-    align-items: center;
-    margin-top: 4px; // spacing from node
-    position: absolute;
-    top: calc(100% + 2px);
-    left: 0;
-    display: flex;
-    gap: 4px;
-    pointer-events: none;
-  }
-
-  /* Label style (currently transparent) */
-  .varBadge {
-    margin-top: 2px;
-    background: rgba(180, 180, 180, 0.18);
-    border: 1px solid rgba(255, 255, 255, 0.25);
-    border-radius: 999px;
-    padding: 2px 6px; 
-    font-size: 12px;
-    color: #ddd;
-    filter: drop-shadow(0 0 1px rgba(0, 0, 0, 0.15)); // subtle outline to improve legibility
-  }
 }
 
-/* ======================================================
-   🔹 Node Color Variants
-   ====================================================== */
-
-/* Default gray (lighter left, darker right) */
-.variantGray .pill {
-  background:
-    linear-gradient(90deg,
-      #666 0 calc(100% - var(--cap-w)),
-      #555 calc(100% - var(--cap-w)));
+/* ------- 胶囊主体与右侧 cap（SVG <rect>）------- */
+.pillBody,
+.pillCap {
+  stroke: #3a3a3a;
+  stroke-width: $pill-stroke;
 }
 
-/* Blue variant (used for right-side highlighting) */
-.variantBlue .pill {
-  background: linear-gradient(90deg, #2f8cff 0 calc(100% - var(--cap-w)), #186ad6 calc(100% - var(--cap-w)));
+/* —— 颜色变体（与旧 UI 的视觉一致） —— */
+/* 默认灰色（与旧版 gray 渐变的视觉接近） */
+.variantGray .pillBody { fill: #666; }
+.variantGray .pillCap  { fill: #555; }
+
+/* 蓝色（R 链） */
+.variantBlue .pillBody { fill: #2f8cff; }
+.variantBlue .pillCap  { fill: #186ad6; }
+
+/* 橙色（L 链） */
+.variantOrange .pillBody { fill: #ffb000; }
+.variantOrange .pillCap  { fill: #ff8a00; }
+
+/* 红色（比较中） */
+.variantRed .pillBody { fill: #ff4a4a; }
+.variantRed .pillCap  { fill: #d12f2f; }
+
+/* 绿色（已合并/放置） */
+.variantGreen .pillBody { fill: #69c587; }
+.variantGreen .pillCap  { fill: #4ea46d; }
+
+/* 备用灰 */
+.variantGrayAlt .pillBody { fill: #7a7a7a; }
+.variantGrayAlt .pillCap  { fill: #5a5a5a; }
+
+/* 右侧小圆点（SVG <circle>） */
+.dot {
+  fill: #4b4b4b;
+  stroke: rgba(255, 255, 255, .25);
+  stroke-width: 1;
 }
 
-/* Orange variant (used for left-side highlighting) */
-.variantOrange .pill {
-  background: linear-gradient(90deg, #ffb000 0 calc(100% - var(--cap-w)), #ff8a00 calc(100% - var(--cap-w)));
+/* 节点内数字（SVG <text>） */
+.value {
+  fill: #f1f1f1;
+  font-weight: 600;
+  font-size: $value-font-size;
+  user-select: none;
+  dominant-baseline: middle;   /* 垂直居中更稳定 */
+  text-anchor: middle;         /* 保险：水平居中 */
 }
 
-/* Red variant (used for comparison highlighting) */
-.variantRed .pill {
-  background: linear-gradient(90deg, #ff4a4a 0 calc(100% - var(--cap-w)), #d12f2f calc(100% - var(--cap-w)));
-}
-
-/* Green variant (used for correctly sorted or placed nodes) */
-.variantGreen .pill {
-  background: linear-gradient(90deg, #69c587 0 calc(100% - var(--cap-w)), #4ea46d calc(100% - var(--cap-w)));
-}
-
-/* Alternative gray variant (backup) */
-.variantGrayAlt .pill {
-  background: linear-gradient(90deg, #7a7a7a 0 calc(100% - var(--cap-w)), #5a5a5a calc(100% - var(--cap-w)));
-}
-
-/* ======================================================
-   🔹 Node State Modifiers
-   ====================================================== */
-
-/* Patched node: inner orange outline */
-.patched .pill {
-  box-shadow: 0 0 0 2px var(--peach) inset, 0 6px 16px rgba(0, 0, 0, .15);
-}
-
-/* Sorted node: inner gray outline */
-.sorted .pill {
-  box-shadow: 0 0 0 2px var(--stone) inset, 0 6px 16px rgba(0, 0, 0, .15);
-}
-
-/* Selection outlines (different colors for levels or groups) */
-.selected .pill { outline: 2px solid var(--sky); outline-offset: 2px; }
-.selected1 .pill { outline: 2px solid var(--leaf); outline-offset: 2px; }
-.selected2 .pill { outline: 2px solid var(--apple); outline-offset: 2px; }
-.selected3 .pill { outline: 2px solid var(--peach); outline-offset: 2px; }
-.selected4 .pill { outline: 2px solid var(--plum); outline-offset: 2px; }
-.selected5 .pill { outline: 2px solid var(--wood); outline-offset: 2px; }
-
-/* Faded node: semi-transparent */
-.faded {
-  opacity: .30;
-}
-
-/* Hidden node: fully transparent and slightly scaled down */
-.hidden {
-  opacity: 0;
+/* =========================================
+   变 量 徽 标（标签堆叠）
+   ========================================= */
+.vars {
   pointer-events: none;
-  transform: translate(-50%, -50%) scale(0.8);
 }
 
-/* ======================================================
-   🔹 Caption Below Node
-   ====================================================== */
-
-/* Optional text label displayed under a node */
-.caption {
-  position: absolute;
-  bottom: 8px;
-  left: 50%;
-  transform: translateX(-50%);
-  font-size: 13px;
-  color: var(--array-2d-row-col-value-color);
+.badgeRect {
+  fill: rgba(180,180,180,0.18);
+  stroke: rgba(255,255,255,0.25);
+  stroke-width: 1;
+  rx: $badge-rect-radius;
+  ry: $badge-rect-radius;
+  height: $badge-rect-h;
 }
+
+.badgeText {
+  fill: #ddd;
+  font-size: $badge-font-size;
+  dominant-baseline: middle;
+}
+
+/* =========================================
+   状 态 修 饰（SVG 版用描边替代 outline/box-shadow）
+   ========================================= */
+.faded  { opacity: 0.30; }
+.hidden { opacity: 0; pointer-events: none; }
+
+.patched .pillBody { stroke: var(--peach); stroke-width: $pill-highlight-stroke; }
+.sorted  .pillBody { stroke: var(--stone); stroke-width: $pill-highlight-stroke; }
+
+/* “选中”高亮（对应 selected1..5 的颜色变量） */
+.selected  .pillBody { stroke: var(--sky);   stroke-width: $pill-highlight-stroke; }
+.selected1 .pillBody { stroke: var(--leaf);  stroke-width: $pill-highlight-stroke; }
+.selected2 .pillBody { stroke: var(--apple); stroke-width: $pill-highlight-stroke; }
+.selected3 .pillBody { stroke: var(--peach); stroke-width: $pill-highlight-stroke; }
+.selected4 .pillBody { stroke: var(--plum);  stroke-width: $pill-highlight-stroke; }
+.selected5 .pillBody { stroke: var(--wood);  stroke-width: $pill-highlight-stroke; }
+
+/* =========================================
+   兼容：若之后仍需要 HTML 版（旧渲染）
+   ========================================= */
+.container { position: relative; overflow: visible; margin-top: 20px; }
+.stage     { position: relative; transform-origin: 0 0; will-change: transform; }

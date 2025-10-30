@@ -2,7 +2,6 @@
 import { cloneDeepWith } from 'lodash'
 
 import Tracer from '../common/Tracer.jsx';
-import LinkedListRenderer from "./LinkedListRenderer";
 import ListNode from "./ListNode";
 
 /**
@@ -10,11 +9,16 @@ import ListNode from "./ListNode";
  * - Maintains a linked list model (nodes map + head/tail/next pointers).
  * - Exposes helper methods to mutate state (select, patch, fade, hide, etc.).
  * - Calls super.set() after any mutation to trigger a re-render.
- * - Renders via LinkedListRenderer.
+ * - Renders via LinkedListRenderer (Graph-based).
  */
 class LinkedListTracer extends Tracer {
   // Provide the renderer class used by this tracer
-  getRendererClass() { return LinkedListRenderer; }
+  getRendererClass() {
+    // Lazy-load to break circular dependency with GraphRenderer/Renderer chain
+    // Webpack 会把 .default 作为 ESM default export 暴露
+    const mod = require('./LinkedListRenderer');
+    return mod.default || mod;
+  } 
 
   // Initialize runtime state and default layout
   init() {
@@ -23,16 +27,16 @@ class LinkedListTracer extends Tracer {
     this.headKey = null;                     // key of head node
     this.tailKey = null;                     // key of tail node
     this.motionOn = true;                    // toggle motion animations
-
-    // Layout parameters (including baseline & wrapping)
+    
+    // Layout parameters (Pointer-like baseline & spacing)
     this.layout = {
       direction: 'horizontal',
-      gap: 65,
-      start: { x: 0, y: 0 },
-      nodeW: 50,
-      baselineY: 0,
-      rowWidth: 720,
-      rowGap: 36,
+      gap: 64,                               // 节点间固定间距（与渲染器保持一致）
+      start: { x: 120, y: 96 },              // 初始起点（留出安全边距）
+      nodeW: 112,                            // 节点可视宽（56 * 2，对应 scale=2）
+      baselineY: 96,                         // 基线 Y
+      rowWidth: 920,                         // 自动换行时的一行可用宽度
+      rowGap: 56,                            // 行距
     };
 
     this.algo = undefined;
@@ -53,8 +57,11 @@ class LinkedListTracer extends Tracer {
     list.forEach((v, i) => {
       const k = `n${i}_${Date.now()}`;       // unique-ish key
       const node = new ListNode(v, k);
+
+      // 按 Pointer 风格从起点开始横向排布，不再额外 +200 偏移
       node.pos.x = this.layout.start.x + i * this.layout.gap;
       node.pos.y = this.layout.start.y;
+
       if (prevKey) {
         this.nodes.get(prevKey).nextKey = k; // link previous to this
       }
@@ -101,11 +108,7 @@ class LinkedListTracer extends Tracer {
     }
   }
 
-  /**
-   * === NEW: set/clear "fillVariant" ===
-   * These drive the pill gradient color inside the renderer so that
-   * pointer view matches table view colors.
-   */
+  // === fillVariant 系列（保持不变） ===
   setFillVariantByIndex(index, variant = 'gray') {
     const key = this.indexToKey.get(index);
     if (!key) return;
@@ -127,10 +130,6 @@ class LinkedListTracer extends Tracer {
     super.set();
   }
 
-  /**
-   * === NEW: color a chain by variants (follow next pointers).
-   * variant: 'orange' | 'blue' | 'green' | 'red' | 'gray' | 'grayAlt'
-   */
   colorChainByVariant(startIndex, variant, tailsArray) {
     if (startIndex === 'Null' || startIndex == null) return;
     for (let i = startIndex; i !== 'Null'; i = tailsArray[i]) {
@@ -143,9 +142,6 @@ class LinkedListTracer extends Tracer {
     super.set();
   }
 
-  /**
-   * Assign a "variable" label to a node by 1-based index (unique).
-   */
   assignVariableByIndex(varName, index) {
     for (const node of this.nodes.values()) {
       node.variables = node.variables.filter(x => x !== varName);
@@ -164,7 +160,6 @@ class LinkedListTracer extends Tracer {
     const key = this.indexToKey.get(index);
     if (key) this.selectByKey(key, color);
   }
-
   deselectByIndex(index) {
     const key = this.indexToKey.get(index);
     if (key) this.deselectByKey(key);
@@ -182,7 +177,6 @@ class LinkedListTracer extends Tracer {
     n.patched++;
     super.set();
   }
-
   depatchByKey(k, v = this.nodes.get(k)?.value) {
     const n = this.nodes.get(k);
     if (!n) return;
@@ -196,7 +190,6 @@ class LinkedListTracer extends Tracer {
     const n = this.nodes.get(k);
     if (n) { n.faded = true; super.set(); }
   }
-
   fadeInByKey(k) {
     const n = this.nodes.get(k);
     if (n) { n.faded = false; super.set(); }
@@ -213,7 +206,6 @@ class LinkedListTracer extends Tracer {
     const n = this.nodes.get(k);
     if (n) { n.hidden = true; super.set(); }
   }
-
   showByKey(k) {
     const n = this.nodes.get(k);
     if (n) { n.hidden = false; super.set(); }
@@ -248,17 +240,14 @@ class LinkedListTracer extends Tracer {
     keys.forEach(k => { const n = this.nodes.get(k); if (n) n.hidden = true; });
     super.set();
   }
-
   showRange(keys) {
     keys.forEach(k => { const n = this.nodes.get(k); if (n) n.hidden = false; });
     super.set();
   }
-
   hideExcept(keepKeys) {
     for (const [key, node] of this.nodes.entries()) node.hidden = !keepKeys.includes(key);
     super.set();
   }
-
   showAll() {
     for (const node of this.nodes.values()) { node.hidden = false; node.faded = false; }
     super.set();
@@ -269,7 +258,6 @@ class LinkedListTracer extends Tracer {
     keys.forEach(k => { const n = this.nodes.get(k); if (n) n.faded = true; });
     super.set();
   }
-
   unfadeRange(keys) {
     keys.forEach(k => { const n = this.nodes.get(k); if (n) n.faded = false; });
     super.set();
@@ -373,12 +361,6 @@ class LinkedListTracer extends Tracer {
     super.set();
   }
 
-  /**
-   * Internal selection marker:
-   * - c: '0' increments the generic selected counter
-   * - c: '1'..'5' toggles named selection flags (selected1..selected5)
-   * - on=false clears all selection flags
-   */
   _mark(k, c, on) {
     const n = this.nodes.get(k);
     if (!n) return;
@@ -394,7 +376,6 @@ class LinkedListTracer extends Tracer {
     super.set();
   }
 
-  /** Clear all selection flags on a node and unset "sorted". */
   _clearSelect(k) {
     const n = this.nodes.get(k);
     if (!n) return;
@@ -404,28 +385,14 @@ class LinkedListTracer extends Tracer {
     super.set();
   }
 
-  // -----------------------------------------------------------------------------
-  // Linked List APIs
-  // -----------------------------------------------------------------------------
-  /**
- * Reset all node color variants back to gray.
- */
-  resetColors() {
-    this.clearAllFillVariants();
-  }
+  // --------------------------- Linked List APIs (保持不变) ---------------------------
+  resetColors() { this.clearAllFillVariants(); }
 
-  /**
-   * Color an entire linked list chain starting at `startIndex`
-   * using a variant name ('orange' | 'blue' | 'green' | 'red' | 'gray').
-   */
   colorChain(startIndex, variant = 'gray', tailsArray = []) {
     if (!startIndex || startIndex === 'Null') return;
     this.colorChainByVariant(startIndex, variant, tailsArray);
   }
 
-  /**
-   * Color a merged portion of the list from M to E (inclusive) in green.
-   */
   colorMerged(M, E, tailsArray = []) {
     if (!M || M === 'Null') return;
     const T = tailsArray;
@@ -435,25 +402,15 @@ class LinkedListTracer extends Tracer {
     }
   }
 
-  /**
-   * Highlight two comparison heads (L and R) in red while
-   * keeping their chains colored.
-   */
   highlightHeads(Lidx, Ridx) {
     if (Lidx && Lidx !== 'Null') this.setFillVariantByIndex(Lidx, 'red');
     if (Ridx && Ridx !== 'Null') this.setFillVariantByIndex(Ridx, 'red');
   }
 
-  /**
-   * Hide all nodes in the linked list visualization.
-   */
   hideAll() {
     for (const key of this.nodes.keys()) this.hideByKey(key);
   }
 
-  /**
-   * Hide every node reachable from a starting index.
-   */
   hideChain(startIndex, tailsArray = []) {
     if (!startIndex || startIndex === 'Null') return;
     const T = tailsArray;
@@ -463,9 +420,6 @@ class LinkedListTracer extends Tracer {
     }
   }
 
-  /**
-   * Show every node reachable from a starting index.
-   */
   showChain(startIndex, tailsArray = []) {
     if (!startIndex || startIndex === 'Null') return;
     const T = tailsArray;
@@ -475,10 +429,6 @@ class LinkedListTracer extends Tracer {
     }
   }
 
-  /**
-   * Move a chain (starting at rightStart) below another chain (leftStart).
-   * Used to visualize the recursive split of the list.
-   */
   moveChainBelow(leftStart, rightStart, tailsArray = [], verticalGap = 60) {
     if (!rightStart || rightStart === 'Null') return;
     const T = tailsArray;
@@ -497,10 +447,6 @@ class LinkedListTracer extends Tracer {
     }
   }
 
-  /**
-   * Reposition all nodes in a merged chain horizontally with equal gaps,
-   * maintaining average vertical alignment.
-   */
   repositionMergedChain(startIndex, tailsArray = [], gap = 65) {
     if (!startIndex || startIndex === 'Null') return;
     const T = tailsArray;
